@@ -20,10 +20,11 @@ from ada.exceptions import AdaSecurityError, AdaValidationError
 def encode_path(path: str) -> str:
     """URL-encode a dCache namespace path.
 
-    Equivalent to the Bash ``urlencode`` function.
-    Encodes all characters except ``/``.
+    Equivalent to the Bash ``urlencode`` function (``jq -sRr @uri``).
+    Encodes all characters including ``/`` so the entire path becomes
+    a single URL path segment (e.g., ``/pnfs/data`` → ``%2Fpnfs%2Fdata``).
     """
-    return urlquote(path, safe="/")
+    return urlquote(path, safe="")
 
 
 def check_file_permissions(filepath: str, *, check_readable: bool = True) -> None:

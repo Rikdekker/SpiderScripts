@@ -85,7 +85,8 @@ class DcacheAPI:
         if self.debug:
             logger.debug("GET %s params=%s", url, params)
         response = self._client.get(
-            url, headers=self._headers(accept=accept), params=params
+            url, headers=self._headers(accept=accept), params=params,
+            auth=self._httpx_auth(),
         )
         return self._handle_response(response)
 
@@ -103,6 +104,7 @@ class DcacheAPI:
             logger.debug("POST %s body=%s", url, json or data)
         kwargs: dict[str, Any] = {
             "headers": self._headers(accept=accept, content_type=content_type),
+            "auth": self._httpx_auth(),
         }
         if json is not None:
             kwargs["json"] = json
@@ -124,6 +126,7 @@ class DcacheAPI:
             url,
             headers=self._headers(content_type="application/json"),
             json=json,
+            auth=self._httpx_auth(),
         )
         return response
 
@@ -132,7 +135,7 @@ class DcacheAPI:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         if self.debug:
             logger.debug("DELETE %s", url)
-        response = self._client.delete(url, headers=self._headers())
+        response = self._client.delete(url, headers=self._headers(), auth=self._httpx_auth())
         return self._handle_response(response)
 
     def patch(
@@ -148,6 +151,7 @@ class DcacheAPI:
             url,
             headers=self._headers(content_type="application/json"),
             json=json,
+            auth=self._httpx_auth(),
         )
         return self._handle_response(response)
 
@@ -171,6 +175,7 @@ class DcacheAPI:
             url,
             headers=headers,
             timeout=httpx.Timeout(30.0, read=float(timeout)),
+            auth=self._httpx_auth(),
         ) as response:
             if response.status_code >= 400:
                 # Read full body for error handling

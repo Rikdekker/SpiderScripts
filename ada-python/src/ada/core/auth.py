@@ -16,6 +16,7 @@ import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
+from urllib.parse import urlparse
 
 from ada.exceptions import AdaAuthError
 from ada.utils import check_file_permissions
@@ -61,7 +62,7 @@ class TokenAuth(AuthProvider):
     """Bearer token authentication (JWT/OIDC or Macaroon)."""
 
     def __init__(self, token: str, source: str = "direct") -> None:
-        self.token = token
+        self.token = token.strip()
         self.source = source
 
     def headers(self) -> dict[str, str]:
@@ -125,8 +126,9 @@ class TokenFileAuth(TokenAuth):
 class NetrcAuth(AuthProvider):
     """Netrc-based username/password (Basic) authentication."""
 
-    def __init__(self, netrcfile: Optional[str] = None) -> None:
+    def __init__(self, netrcfile: Optional[str] = None, hostname: Optional[str] = None) -> None:
         self.netrcfile = netrcfile or str(Path.home() / ".netrc")
+        self.hostname = hostname
         check_file_permissions(self.netrcfile)
 
     def headers(self) -> dict[str, str]:
@@ -146,7 +148,24 @@ class NetrcAuth(AuthProvider):
         except Exception as exc:
             raise AdaAuthError(f"Cannot parse netrc file '{self.netrcfile}': {exc}") from exc
 
-        return nrc
+        if not self.hostname:
+            raise AdaAuthError(
+                "Cannot use netrc authentication without knowing the API hostname."
+            )
+
+        auth_tuple = nrc.authenticators(self.hostname)
+        if auth_tuple is None:
+            raise AdaAuthError(
+                f"No credentials found for host '{self.hostname}' in '{self.netrcfile}'."
+            )
+
+        login, _, password = auth_tuple
+        if not login or not password:
+            raise AdaAuthError(
+                f"Incomplete credentials for host '{self.hostname}' in '{self.netrcfile}'."
+            )
+
+        return httpx.BasicAuth(username=login, password=password)
 
 
 class ProxyAuth(AuthProvider):
@@ -191,6 +210,12 @@ class ProxyAuth(AuthProvider):
         return ctx
 
 
+def _extract_hostname(api_url: str) -> str:
+    """Extract hostname from an API URL."""
+    parsed = urlparse(api_url)
+    return parsed.hostname or ""
+
+
 def resolve_auth(
     token: Optional[str] = None,
     tokenfile: Optional[str] = None,
@@ -209,6 +234,7 @@ def resolve_auth(
         AdaAuthError: If no authentication method can be resolved.
     """
     igtf = config.igtf if config else True
+    hostname = _extract_hostname(config.api) if config and config.api else ""
 
     # 1. Explicit arguments
     if token:
@@ -216,7 +242,7 @@ def resolve_auth(
     if tokenfile:
         return TokenFileAuth(tokenfile)
     if netrc is not None:
-        return NetrcAuth(netrc if netrc else None)
+        return NetrcAuth(netrc if netrc else None, hostname=hostname)
     if proxy is not None:
         return ProxyAuth(
             proxyfile=proxy if proxy else None,
@@ -229,14 +255,14 @@ def resolve_auth(
     if tf := os.environ.get("ada_tokenfile"):
         return TokenFileAuth(tf)
     if nf := os.environ.get("ada_netrcfile"):
-        return NetrcAuth(nf)
+        return NetrcAuth(nf, hostname=hostname)
 
     # 3. Config file values
     if config:
         if config.tokenfile:
             return TokenFileAuth(config.tokenfile)
         if config.netrcfile:
-            return NetrcAuth(config.netrcfile)
+            return NetrcAuth(config.netrcfile, hostname=hostname)
 
     raise AdaAuthError(
         "No authentication method specified. "

@@ -12,10 +12,19 @@
 
 ```bash
 cd ada-python
+
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install ADA with development dependencies
 pip install -e ".[dev]"
 ```
 
 This installs ADA in editable mode along with development dependencies (pytest, ruff, mypy).
+
+> **Note:** On macOS (and other systems with PEP 668), `pip install` outside a
+> virtual environment is blocked. Always create a venv first.
 
 ### Dependencies
 
@@ -29,12 +38,19 @@ ADA has only two runtime dependencies:
 ## Verify Installation
 
 ```bash
+# Verify ada points to the Python version (not an older Bash version)
+which ada    # should show .venv/bin/ada
+
 # Check the CLI is available
 ada --version
 
 # Check Python import works
 python3 -c "from ada import AdaClient; print('OK')"
 ```
+
+> **Tip:** If `which ada` shows a different path (e.g., `/usr/local/bin/ada`),
+> an older Bash version of ada may take precedence. Ensure the virtual
+> environment is activated, or remove/rename the old script.
 
 ## First Steps
 

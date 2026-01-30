@@ -36,8 +36,10 @@ def validate_token(
         AdaAuthError: If the token cannot be decoded.
     """
     if is_jwt(token):
+        logger.debug("Token identified as JWT/OIDC (%s)", source)
         _validate_jwt(token, source, command)
     else:
+        logger.debug("Token identified as Macaroon (%s)", source)
         _validate_macaroon(token, source, command)
 
 

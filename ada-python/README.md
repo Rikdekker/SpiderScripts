@@ -5,8 +5,20 @@ Python implementation of the ADA tool for managing data in SURF's dCache storage
 ## Installation
 
 ```bash
+# Create and activate a virtual environment first
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install ADA in editable mode with dev dependencies
 pip install -e ".[dev]"
 ```
+
+> **Tip:** After installation, verify that `ada` resolves to the Python version
+> (not a previously installed Bash version):
+> ```bash
+> which ada
+> ```
+> The path should point to `.venv/bin/ada`.
 
 ## Usage
 

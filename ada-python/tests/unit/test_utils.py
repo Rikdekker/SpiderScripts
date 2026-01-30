@@ -16,20 +16,22 @@ from ada.exceptions import AdaValidationError
 
 class TestEncodePath:
     def test_simple_path(self):
-        assert encode_path("/pnfs/data/test") == "/pnfs/data/test"
+        # Slashes are encoded (matching Bash jq @uri behavior)
+        assert encode_path("/pnfs/data/test") == "%2Fpnfs%2Fdata%2Ftest"
 
     def test_path_with_spaces(self):
         result = encode_path("/pnfs/data/my file.txt")
         assert "%20" in result
-        assert result == "/pnfs/data/my%20file.txt"
+        assert result == "%2Fpnfs%2Fdata%2Fmy%20file.txt"
 
     def test_path_with_special_chars(self):
         result = encode_path("/pnfs/data/file#1")
         assert "%23" in result
 
-    def test_preserves_slashes(self):
+    def test_encodes_slashes(self):
+        # All characters including / are encoded (single URL path segment)
         result = encode_path("/a/b/c/d")
-        assert result == "/a/b/c/d"
+        assert result == "%2Fa%2Fb%2Fc%2Fd"
 
 
 class TestParseLifetime:
